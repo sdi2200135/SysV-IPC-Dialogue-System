@@ -1,0 +1,1535 @@
+<!-- site for the explanation of the project -->
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SysV IPC Dialogue System</title>
+<style>
+:root {
+  --bg: #0d0609;
+  --bg-card: #1a0f14;
+  --bg-soft: #2a1a20;
+  --text: #f5e0e8;
+  --text-muted: #a88a96;
+  --accent: #f43f5e;
+  --accent-2: #fb7185;
+  --accent-3: #f59e0b;
+  --success: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --info: #60a5fa;
+  --border: #3a2028;
+  --msg: #ec4899;
+  --dialog: #8b5cf6;
+  --semaphore: #06b6d4;
+  --shm: #22c55e;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(244,63,94,0.06), transparent 50%),
+    radial-gradient(circle at 80% 90%, rgba(139,92,246,0.06), transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+nav {
+  background: rgba(13, 6, 9, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 0 1.5rem;
+}
+
+.nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.logo::before { content: "💬"; font-size: 1.2rem; }
+
+.nav-links {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.nav-links a:hover { color: var(--text); background: var(--bg-soft); }
+.nav-links a.active { color: var(--bg); background: var(--accent); }
+
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+.page { display: none; animation: fadeIn 0.4s ease; }
+.page.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hero {
+  text-align: center;
+  padding: 2rem 0 3rem;
+}
+
+.hero h1 {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 800;
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 1rem;
+}
+
+.hero p {
+  color: var(--text-muted);
+  max-width: 760px;
+  margin: 0 auto 1.5rem;
+  font-size: 1.05rem;
+}
+
+.badges {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.badge {
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.badge.c { color: #60a5fa; border-color: #60a5fa; }
+.badge.shm { color: #22c55e; border-color: #22c55e; }
+.badge.sem { color: #06b6d4; border-color: #06b6d4; }
+.badge.ipc { color: #f43f5e; border-color: #f43f5e; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+  transition: all 0.25s;
+}
+
+.card:hover { transform: translateY(-3px); border-color: var(--accent); }
+.card h3 { font-size: 1.1rem; margin-bottom: 0.6rem; color: var(--text); }
+.card p { color: var(--text-muted); font-size: 0.92rem; }
+
+.comp-card { cursor: pointer; position: relative; overflow: hidden; }
+.comp-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+}
+.comp-card.msg::before { background: var(--msg); }
+.comp-card.dialog::before { background: var(--dialog); }
+.comp-card.semaphore::before { background: var(--semaphore); }
+.comp-card.shm::before { background: var(--shm); }
+
+.comp-card h3 { display: flex; align-items: center; gap: 0.5rem; }
+.comp-card .tag {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.tag.msg { background: rgba(236,72,153,0.15); color: var(--msg); }
+.tag.dialog { background: rgba(139,92,246,0.15); color: var(--dialog); }
+.tag.sem { background: rgba(6,182,212,0.15); color: var(--semaphore); }
+.tag.shm { background: rgba(34,197,94,0.15); color: var(--shm); }
+
+.section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.section h2 {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--text);
+}
+
+.section h2 .num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  background: var(--accent);
+  color: var(--bg);
+  flex-shrink: 0;
+}
+
+.section h3 {
+  font-size: 1rem;
+  margin: 1.2rem 0 0.6rem;
+  color: var(--accent-2);
+  font-weight: 600;
+}
+
+.comp-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.comp-header .icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.comp-header.msg .icon { background: rgba(236,72,153,0.15); color: var(--msg); }
+.comp-header.dialog .icon { background: rgba(139,92,246,0.15); color: var(--dialog); }
+.comp-header.semaphore .icon { background: rgba(6,182,212,0.15); color: var(--semaphore); }
+.comp-header.shm .icon { background: rgba(34,197,94,0.15); color: var(--shm); }
+.comp-header.ops .icon { background: rgba(245,158,11,0.15); color: var(--accent-3); }
+.comp-header.design .icon { background: rgba(244,63,94,0.15); color: var(--accent); }
+
+.comp-header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; }
+.comp-header p { color: var(--text-muted); font-size: 0.95rem; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.9rem;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+th, td {
+  padding: 0.7rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  background: var(--bg-soft);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(244, 63, 94, 0.04); }
+
+td code, p code, li code, .step code {
+  background: var(--bg-soft);
+  padding: 0.15rem 0.45rem;
+  border-radius: 5px;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 0.85em;
+  color: var(--accent-2);
+  border: 1px solid var(--border);
+}
+
+.step-list {
+  list-style: none;
+  counter-reset: step;
+  padding-left: 0;
+}
+
+.step-list li {
+  counter-increment: step;
+  position: relative;
+  padding: 0.8rem 0 0.8rem 3rem;
+  border-left: 2px solid var(--border);
+  margin-left: 1rem;
+}
+
+.step-list li::before {
+  content: counter(step);
+  position: absolute;
+  left: -1.05rem;
+  top: 0.8rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 3px solid var(--bg-card);
+}
+
+.step-list li:last-child { border-left-color: transparent; }
+.step-list li strong { color: var(--text); }
+.step-list li span { color: var(--text-muted); font-size: 0.92rem; display: block; margin-top: 0.15rem; }
+
+pre {
+  background: #060305;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: #e0c8d2;
+  margin: 0.75rem 0;
+}
+
+pre .kw { color: #f472b6; }
+pre .cm { color: #6a4d58; font-style: italic; }
+pre .str { color: #86efac; }
+pre .num { color: #fbbf24; }
+pre .fn { color: #22d3ee; }
+pre .type { color: #a78bfa; }
+
+.result-box {
+  background: linear-gradient(135deg, rgba(244,63,94,0.08), rgba(139,92,246,0.08));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  margin: 0.75rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.alert {
+  padding: 1rem 1.2rem;
+  border-radius: 10px;
+  margin: 0.75rem 0;
+  border-left: 4px solid;
+  font-size: 0.92rem;
+}
+
+.alert.info { background: rgba(96,165,250,0.08); border-color: var(--info); }
+.alert.success { background: rgba(52,211,153,0.08); border-color: var(--success); }
+.alert.warn { background: rgba(251,191,36,0.08); border-color: var(--warn); }
+.alert.danger { background: rgba(248,113,113,0.08); border-color: var(--danger); }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.stat {
+  background: var(--bg-soft);
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.stat .value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent);
+  display: block;
+  line-height: 1.2;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.stat .name {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.ascii-diagram {
+  background: #060305;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--accent-2);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* Struct visualizer */
+.struct-box {
+  background: #060305;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 0;
+  margin: 1rem 0;
+  overflow: hidden;
+}
+
+.struct-box .struct-header {
+  background: var(--bg-soft);
+  padding: 0.6rem 1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-bottom: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.struct-box .struct-header.msg { color: var(--msg); border-bottom-color: var(--msg); }
+.struct-box .struct-header.dialog { color: var(--dialog); border-bottom-color: var(--dialog); }
+.struct-box .struct-header.list { color: var(--semaphore); border-bottom-color: var(--semaphore); }
+.struct-box .struct-header.queue { color: var(--accent-3); border-bottom-color: var(--accent-3); }
+
+.struct-field {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+}
+
+.struct-field:last-child { border-bottom: none; }
+.struct-field .field-name { color: var(--accent-2); }
+.struct-field .field-type { color: var(--text-muted); font-size: 0.75rem; }
+.struct-field .field-desc { color: var(--text-muted); font-size: 0.78rem; font-style: italic; margin-left: 1rem; }
+
+/* Semaphore diagram */
+.sem-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.sem-card {
+  background: var(--bg-soft);
+  border-radius: 12px;
+  padding: 1.25rem;
+  border-left: 4px solid var(--semaphore);
+  border-top: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.sem-card .sem-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--semaphore);
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  letter-spacing: 0.5px;
+}
+
+.sem-card h4 {
+  font-size: 0.95rem;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 0.5rem;
+}
+
+.sem-card p { color: var(--text-muted); font-size: 0.85rem; }
+
+.sem-card .init-val {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: rgba(6,182,212,0.15);
+  color: var(--semaphore);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  margin-top: 0.5rem;
+}
+
+/* Flow visual */
+.flow-steps {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #060305;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.flow-step {
+  padding: 0.5rem 0.9rem;
+  background: var(--bg-soft);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flow-arrow { color: var(--accent); font-weight: 700; }
+
+footer {
+  text-align: center;
+  padding: 2rem 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+}
+
+@media (max-width: 640px) {
+  .nav-inner { height: auto; padding: 0.75rem 0; }
+  .nav-links { width: 100%; justify-content: center; }
+  .nav-links a { padding: 0.4rem 0.7rem; font-size: 0.82rem; }
+  .section { padding: 1.25rem; }
+  .comp-header h1 { font-size: 1.3rem; }
+  .flow-steps { flex-direction: column; align-items: stretch; }
+  .flow-arrow { transform: rotate(90deg); text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="logo" onclick="go('home')">SysV IPC</div>
+    <ul class="nav-links">
+      <li><a data-page="home" onclick="go('home')">Αρχική</a></li>
+      <li><a data-page="structures" onclick="go('structures')">Δομές</a></li>
+      <li><a data-page="sync" onclick="go('sync')">Συγχρονισμός</a></li>
+      <li><a data-page="operations" onclick="go('operations')">Λειτουργίες</a></li>
+      <li><a data-page="memory" onclick="go('memory')">Μνήμη & IPC</a></li>
+      <li><a data-page="design" onclick="go('design')">Design Choices</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+
+<!-- ==================== HOME ==================== -->
+<section class="page active" id="home">
+  <div class="hero">
+    <h1>SysV IPC Dialogue System</h1>
+    <p>
+      Σύστημα <strong>inter-process communication</strong> σε Linux, 
+      βασισμένο σε <strong>shared memory</strong> και 
+      <strong>System V semaphores</strong> για συντονισμένη ανταλλαγή μηνυμάτων 
+      μεταξύ πολλαπλών διεργασιών.
+    </p>
+    <div class="badges">
+      <span class="badge c">C (gcc -Wall -Wextra)</span>
+      <span class="badge shm">Shared Memory</span>
+      <span class="badge sem">Semaphores</span>
+      <span class="badge ipc">SysV IPC</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📖 Σχετικά με την Εργασία</h2>
+    <p>
+      Η παρούσα εργασία αποτελεί την <strong>1η Προγραμματιστική Εργασία</strong> 
+      του μαθήματος <em>«Λειτουργικά Συστήματα»</em>. Υλοποιεί ένα σύστημα 
+      <strong>dialogue-based επικοινωνίας</strong> όπου κάθε διεργασία μπορεί να:
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <h3>💬 Δημιουργήσει ή να συμμετάσχει σε διάλογο</h3>
+        <p>Κάθε διάλογος έχει μοναδικό ID και ξεχωριστό χώρο στην shared memory.</p>
+      </div>
+      <div class="card">
+        <h3>📤 Στείλει μηνύματα</h3>
+        <p>Broadcast σε όλους τους συμμετέχοντες — το μήνυμα διαβάζεται μία φορά από τον καθένα.</p>
+      </div>
+      <div class="card">
+        <h3>📥 Λάβει μηνύματα</h3>
+        <p>Διασχίζει την ουρά και λαμβάνει όλα τα μηνύματα που δεν έχει διαβάσει.</p>
+      </div>
+      <div class="card">
+        <h3>🛑 Τερματίσει τον διάλογο</h3>
+        <p>Με την αποστολή <code>TERMINATE</code> — μόνο αφού όλοι έχουν διαβάσει όλα τα μηνύματα.</p>
+      </div>
+    </div>
+
+    <div class="alert success">
+      <strong>Πλήρης υλοποίηση:</strong> Η εργασία καλύπτει όλες τις απαιτήσεις 
+      της εκφώνησης — δημιουργία/διαχείριση διαλόγων, αποστολή/λήψη μηνυμάτων, 
+      συγχρονισμός με semaphores, καθαρισμός πόρων.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🏗️ Βασικά Συστατικά</h2>
+    <p style="color:var(--text-muted); margin-bottom:1rem;">
+      4 δομές δεδομένων + 3 semaphores ανά διάλογο. Πατήστε για λεπτομέρειες.
+    </p>
+    <div class="grid">
+      <div class="card comp-card msg" onclick="go('structures')">
+        <h3>MSG <span class="tag msg">message</span></h3>
+        <p>Ένα μήνυμα: id, content, sender, readers array, terminated flag.</p>
+      </div>
+      <div class="card comp-card dialog" onclick="go('structures')">
+        <h3>Dialog <span class="tag dialog">dialogue</span></h3>
+        <p>Ένας διάλογος: id, participants, msg_queue, sem_id, actived flag.</p>
+      </div>
+      <div class="card comp-card semaphore" onclick="go('sync')">
+        <h3>Semaphores <span class="tag sem">sync</span></h3>
+        <p>3 semaphores ανά διάλογο: access, empty_slots, full_slots.</p>
+      </div>
+      <div class="card comp-card shm" onclick="go('memory')">
+        <h3>Shared Memory <span class="tag shm">IPC</span></h3>
+        <p>Δύο segments: Dialog_list και Dialog — κοινά για όλες τις διεργασίες.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>⚡ Key Concepts</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>SEM_UNDO</h3>
+        <p>Αυτόματη επαναφορά semaphores αν μια διεργασία τερματιστεί πρόωρα.</p>
+      </div>
+      <div class="card">
+        <h3>Circular Buffer</h3>
+        <p>Η ουρά μηνυμάτων είναι κυκλική — <code>(head + 1) % max_msgs</code>.</p>
+      </div>
+      <div class="card">
+        <h3>Per-message Readers</h3>
+        <p>Κάθε μήνυμα κρατά ποιοι το διάβασαν — εξασφαλίζει "read once per participant".</p>
+      </div>
+      <div class="card">
+        <h3>Graceful Terminate</h3>
+        <p>Ο <code>TERMINATE</code> εκτελείται αφού όλοι οι συμμετέχοντες διαβάσουν τα πάντα.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📂 Δομή Project</h2>
+    <pre>./
+├── Makefile
+├── README.md
+├── include/
+│   ├── common.h              <span class="cm">// δομές, σταθερές, macros</span>
+│   ├── shared_memory.h       <span class="cm">// shared memory management</span>
+│   ├── synchronization.h     <span class="cm">// semaphore management</span>
+│   ├── dialog_control.h      <span class="cm">// dialogue management</span>
+│   └── msg_queue.h           <span class="cm">// message queue</span>
+└── src/
+    ├── main.c                <span class="cm">// main + user interaction</span>
+    ├── shared_memory.c
+    ├── synchronization.c
+    ├── dialog_control.c
+    └── msg_queue.c</pre>
+  </div>
+
+  <div class="section">
+    <h2>👥 Ομάδα</h2>
+    <table>
+      <thead><tr><th>Ονοματεπώνυμο</th><th>Α.Μ.</th></tr></thead>
+      <tbody>
+        <tr><td>Παπαθανασίου Ελένη</td><td>1115202200135</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ==================== STRUCTURES ==================== -->
+<section class="page" id="structures">
+  <div class="comp-header dialog">
+    <div class="icon">📦</div>
+    <div>
+      <h1>Δομές Δεδομένων</h1>
+      <p>Οι 4 βασικές δομές στο <code>common.h</code></p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>1️⃣ MSG — Ένα Μήνυμα</h2>
+
+    <div class="struct-box">
+      <div class="struct-header msg">📨 struct MSG</div>
+      <div class="struct-field">
+        <span class="field-name">msg_id</span>
+        <span class="field-type">int</span>
+        <span class="field-desc">μοναδικό id μηνύματος</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">cont[256]</span>
+        <span class="field-type">char[]</span>
+        <span class="field-desc">περιεχόμενο (max 256)</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">sender_pid</span>
+        <span class="field-type">int</span>
+        <span class="field-desc">pid αποστολέα</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">readers[50]</span>
+        <span class="field-type">int[]</span>
+        <span class="field-desc">pids που το διάβασαν</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">readers_c</span>
+        <span class="field-type">int</span>
+        <span class="field-desc">πλήθος αναγνωστών</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">participants</span>
+        <span class="field-type">int</span>
+        <span class="field-desc">συμμετέχοντες όταν στάλθηκε</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">terminated</span>
+        <span class="field-type">int (flag)</span>
+        <span class="field-desc">1 αν είναι TERMINATE</span>
+      </div>
+    </div>
+
+    <div class="alert info">
+      <strong>Σημείωση:</strong> Ο <code>readers[]</code> πίνακας επιτρέπει στο 
+      σύστημα να γνωρίζει ποιοι έχουν διαβάσει κάθε μήνυμα — έτσι ώστε κάθε 
+      συμμετέχων να το διαβάζει <strong>ακριβώς μία φορά</strong>.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>2️⃣ MSG_queue — Ουρά Μηνυμάτων</h2>
+
+    <div class="struct-box">
+      <div class="struct-header queue">📚 struct MSG_queue</div>
+      <div class="struct-field">
+        <span class="field-name">msgs[50]</span>
+        <span class="field-type">MSG[]</span>
+        <span class="field-desc">πίνακας μηνυμάτων (circular)</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">head</span>
+        <span class="field-type">int</span>
+        <span class="field-desc">δείκτης στο πιο πρόσφατο</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">tail</span>
+        <span class="field-type">int</span>
+        <span class="field-desc">δείκτης στο πιο παλιό</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">count</span>
+        <span class="field-type">int</span>
+        <span class="field-desc">τρέχον πλήθος μηνυμάτων</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">next_msg_id</span>
+        <span class="field-type">int</span>
+        <span class="field-desc">επόμενο διαθέσιμο id</span>
+      </div>
+    </div>
+
+    <h3>Circular Buffer Logic</h3>
+    <pre>head = (head + <span class="num">1</span>) % max_msgs;  <span class="cm">// wrap-around</span>
+tail = (tail + <span class="num">1</span>) % max_msgs;  <span class="cm">// wrap-around</span></pre>
+
+    <div class="alert info">
+      <strong>Γιατί circular:</strong> Αποδοτική χρήση μνήμης χωρίς μετακίνηση 
+      στοιχείων — γεμίζει διαδοχικά και επιστρέφει στην αρχή.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>3️⃣ Dialog — Ένας Διάλογος</h2>
+
+    <div class="struct-box">
+      <div class="struct-header dialog">💬 struct Dialog</div>
+      <div class="struct-field">
+        <span class="field-name">dialog_id</span>
+        <span class="field-type">int</span>
+        <span class="field-desc">μοναδικό id (100..999)</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">participants_c</span>
+        <span class="field-type">int</span>
+        <span class="field-desc">πλήθος συμμετεχόντων</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">participant_pids[50]</span>
+        <span class="field-type">int[]</span>
+        <span class="field-desc">λίστα pids συμμετεχόντων</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">msg_queue</span>
+        <span class="field-type">MSG_queue</span>
+        <span class="field-desc">ουρά μηνυμάτων διαλόγου</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">actived</span>
+        <span class="field-type">int (flag)</span>
+        <span class="field-desc">1 αν είναι ενεργός</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">sem_id</span>
+        <span class="field-type">int</span>
+        <span class="field-desc">semaphore set ID</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>4️⃣ Dialog_list — Λίστα Διαλόγων</h2>
+
+    <div class="struct-box">
+      <div class="struct-header list">📋 struct Dialog_list</div>
+      <div class="struct-field">
+        <span class="field-name">dialog_ids[100]</span>
+        <span class="field-type">int[]</span>
+        <span class="field-desc">ids ενεργών διαλόγων</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">active_c</span>
+        <span class="field-type">int</span>
+        <span class="field-desc">πλήθος ενεργών</span>
+      </div>
+      <div class="struct-field">
+        <span class="field-name">sem_id</span>
+        <span class="field-type">int</span>
+        <span class="field-desc">semaphore προστασίας λίστας</span>
+      </div>
+    </div>
+
+    <div class="alert success">
+      <strong>Global access:</strong> Η <code>Dialog_list</code> είναι το 
+      <em>entry point</em> του συστήματος — κάθε νέα διεργασία συνδέεται πρώτα 
+      σε αυτή για να δει ποιοι διάλογοι υπάρχουν.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📊 Σταθερές Συστήματος</h2>
+    <table>
+      <thead><tr><th>Σταθερά</th><th>Τιμή</th><th>Περιγραφή</th></tr></thead>
+      <tbody>
+        <tr><td><code>max_dialogs</code></td><td>100</td><td>max διαλόγων ανά σύστημα</td></tr>
+        <tr><td><code>max_msgs</code></td><td>50</td><td>max μηνυμάτων ανά ουρά</td></tr>
+        <tr><td><code>max_msg_length</code></td><td>256</td><td>max χαρακτήρες ανά μήνυμα</td></tr>
+        <tr><td><code>max_participants</code></td><td>50</td><td>max συμμετεχόντων ανά διάλογο</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ==================== SYNCHRONIZATION ==================== -->
+<section class="page" id="sync">
+  <div class="comp-header semaphore">
+    <div class="icon">🔒</div>
+    <div>
+      <h1>Συγχρονισμός</h1>
+      <p>System V Semaphores — <code>synchronization.c</code></p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🎯 3 Semaphores ανά Διάλογο</h2>
+    <p>
+      Για κάθε διάλογο δημιουργείται ένα <strong>semaphore set</strong> με 3 
+      σημαφόρους. Αυτοί συντονίζουν την πρόσβαση και την ροή των μηνυμάτων.
+    </p>
+
+    <div class="sem-grid">
+      <div class="sem-card">
+        <div class="sem-id">SEMAPHORE 0</div>
+        <h4>sem_access_dialog</h4>
+        <p>Αποκλειστική πρόσβαση στη δομή <code>Dialog</code>. Εξασφαλίζει 
+        mutual exclusion κατά την ανάγνωση/εγγραφή.</p>
+        <span class="init-val">Init: 1</span>
+      </div>
+
+      <div class="sem-card">
+        <div class="sem-id">SEMAPHORE 1</div>
+        <h4>sem_empty_slots</h4>
+        <p>Μετρά τα κενά slots στην ουρά μηνυμάτων. Ο producer περιμένει αν 
+        είναι 0.</p>
+        <span class="init-val">Init: max_msgs (50)</span>
+      </div>
+
+      <div class="sem-card">
+        <div class="sem-id">SEMAPHORE 2</div>
+        <h4>sem_full_slots</h4>
+        <p>Μετρά τα γεμάτα slots. Ο consumer περιμένει αν είναι 0 (δεν 
+        υπάρχουν μηνύματα).</p>
+        <span class="init-val">Init: 0</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🧩 Macros στο common.h</h2>
+    <p>Για καθαρότερο κώδικα, ορίζονται macros για κάθε λειτουργία:</p>
+
+    <pre><span class="cm">// Αποκλειστική πρόσβαση στη δομή</span>
+<span class="kw">#define</span> LOCK(semid)   { sem_access_dialog, -<span class="num">1</span>, SEM_UNDO }
+<span class="kw">#define</span> UNLOCK(semid) { sem_access_dialog, +<span class="num">1</span>, SEM_UNDO }
+
+<span class="cm">// Producer: περιμένει κενό slot</span>
+<span class="kw">#define</span> WAIT_EMPTY(semid)   { sem_empty_slots, -<span class="num">1</span>, SEM_UNDO }
+<span class="kw">#define</span> SIGNAL_EMPTY(semid) { sem_empty_slots, +<span class="num">1</span>, SEM_UNDO }
+
+<span class="cm">// Consumer: περιμένει νέο μήνυμα</span>
+<span class="kw">#define</span> WAIT_FULL(semid)   { sem_full_slots, -<span class="num">1</span>, SEM_UNDO }
+<span class="kw">#define</span> SIGNAL_FULL(semid) { sem_full_slots, +<span class="num">1</span>, SEM_UNDO }</pre>
+
+    <div class="alert success">
+      <strong>SEM_UNDO:</strong> Όλες οι λειτουργίες χρησιμοποιούν 
+      <code>SEM_UNDO</code>. Αν μια διεργασία τερματιστεί πρόωρα, ο kernel 
+      <strong>αυτόματα</strong> επαναφέρει τις αλλαγές — αποφεύγονται 
+      deadlocks.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🔄 Producer-Consumer Pattern</h2>
+
+    <h3>Producer (αποστολέας)</h3>
+    <div class="flow-steps">
+      <span class="flow-step">WAIT_EMPTY</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">LOCK</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Γράψε μήνυμα</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">UNLOCK</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">SIGNAL_FULL</span>
+    </div>
+
+    <h3>Consumer (λήπτης)</h3>
+    <div class="flow-steps">
+      <span class="flow-step">LOCK</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Διάβασε μήνυμα</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">UNLOCK</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">SIGNAL_EMPTY</span>
+    </div>
+
+    <h3>Semaphore Operations</h3>
+    <table>
+      <thead><tr><th>Λειτουργία</th><th>Semaphore</th><th>Τιμή</th><th>Περιγραφή</th></tr></thead>
+      <tbody>
+        <tr><td><code>LOCK</code></td><td>access_dialog</td><td>-1</td><td>Μειώνει → μπλοκάρει αν 0</td></tr>
+        <tr><td><code>UNLOCK</code></td><td>access_dialog</td><td>+1</td><td>Αυξάνει → ξεκλειδώνει</td></tr>
+        <tr><td><code>WAIT_EMPTY</code></td><td>empty_slots</td><td>-1</td><td>Περιμένει κενό slot</td></tr>
+        <tr><td><code>SIGNAL_EMPTY</code></td><td>empty_slots</td><td>+1</td><td>Απελευθέρωση slot</td></tr>
+        <tr><td><code>WAIT_FULL</code></td><td>full_slots</td><td>-1</td><td>Περιμένει νέο μήνυμα</td></tr>
+        <tr><td><code>SIGNAL_FULL</code></td><td>full_slots</td><td>+1</td><td>Ειδοποίηση για μήνυμα</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>🔑 Semaphore Key Generation</h2>
+    <pre><span class="type">key_t</span> key = <span class="fn">IPC_PRIVATE</span> + key_sem + dialog_id;
+
+<span class="type">int</span> semid = <span class="fn">semget</span>(key, <span class="num">3</span>, IPC_CREAT | <span class="num">0666</span>);
+
+<span class="fn">semctl</span>(semid, sem_access_dialog, SETVAL, <span class="num">1</span>);          <span class="cm">// ξεκλείδωτο</span>
+<span class="fn">semctl</span>(semid, sem_empty_slots,   SETVAL, max_msgs);  <span class="cm">// όλα κενά</span>
+<span class="fn">semctl</span>(semid, sem_full_slots,    SETVAL, <span class="num">0</span>);          <span class="cm">// κανένα μήνυμα</span></pre>
+
+    <div class="alert info">
+      <strong>IPC_PRIVATE + key_sem + dialog_id:</strong> Εξασφαλίζει 
+      <strong>μοναδικό</strong> key για κάθε διάλογο — δύο dialogues δεν 
+      μοιράζονται semaphores.
+    </div>
+  </div>
+</section>
+
+<!-- ==================== OPERATIONS ==================== -->
+<section class="page" id="operations">
+  <div class="comp-header ops">
+    <div class="icon">⚙️</div>
+    <div>
+      <h1>Λειτουργίες Συστήματος</h1>
+      <p>Δημιουργία, Join, Send, Receive, Terminate</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>1️⃣ Εκκίνηση & Είσοδος σε Διάλογο</h2>
+    <p>
+      Κάθε νέα διεργασία συνδέεται πρώτα στη <strong>λίστα διαλόγων</strong> 
+      και από το κεντρικό μενού μπορεί:
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <h3>[N] Νέος Διάλογος</h3>
+        <p>Δημιουργεί νέο διάλογο με <strong>τυχαίο μοναδικό ID</strong> 
+        (100-999). Τον προσθέτει στη λίστα.</p>
+      </div>
+      <div class="card">
+        <h3>[J] Join</h3>
+        <p>Εισάγει το ID υπάρχοντος διαλόγου και συνδέεται σε αυτόν.</p>
+      </div>
+      <div class="card">
+        <h3>[L] List</h3>
+        <p>Εμφανίζει όλους τους ενεργούς διαλόγους με το πλήθος συμμετεχόντων.</p>
+      </div>
+      <div class="card">
+        <h3>[E] Exit</h3>
+        <p>Έξοδος από το σύστημα — αποσύνδεση από τη λίστα διαλόγων.</p>
+      </div>
+    </div>
+
+    <h3>Ροή Δημιουργίας Διαλόγου</h3>
+    <ol class="step-list">
+      <li><strong>Attach στη λίστα</strong><span><code>attach_d_list(0)</code> ή <code>attach_d_list(1)</code> αν είναι η πρώτη διεργασία.</span></li>
+      <li><strong>create_new_dialog()</strong><span>Lock τη λίστα, έλεγχος max_dialogs, δημιουργία τυχαίου μοναδικού ID, προσθήκη στη λίστα.</span></li>
+      <li><strong>attach_dialog()</strong><span>Δημιουργία shared memory segment για το <code>Dialog</code> μέσω <code>shmget()</code>.</span></li>
+      <li><strong>Αρχικοποίηση</strong><span>Μηδενισμός όλων των πεδίων + δημιουργία 3 semaphores.</span></li>
+      <li><strong>Προσθήκη συμμετέχοντα</strong><span><code>add_participant(dialog, pid)</code> με κλειδωμένα semaphores.</span></li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2>2️⃣ Αποστολή Μηνύματος</h2>
+    <p>Συνάρτηση: <code>send_msg()</code> στο <code>msg_queue.c</code></p>
+
+    <ol class="step-list">
+      <li><strong>wait_for_space(semid)</strong><span>Μπλοκάρει αν δεν υπάρχει κενό slot στην ουρά (WAIT_EMPTY).</span></li>
+      <li><strong>d_lock(semid)</strong><span>Κλείδωμα της δομής Dialog για αποκλειστική πρόσβαση.</span></li>
+      <li><strong>Έλεγχος χώρου</strong><span>Αν <code>msg_queue.count >= max_msgs</code> → unlock + signal_new_space + return 0.</span></li>
+      <li><strong>Αντιγραφή μηνύματος</strong><span><code>strncpy()</code> του content, set sender_pid, msg_id, terminated flag.</span></li>
+      <li><strong>Set participants</strong><span><code>msg->participants = dialog->participants_c</code> — snapshot των συμμετεχόντων.</span></li>
+      <li><strong>Ο αποστολέας διαβάζει πρώτος</strong><span><code>read_msg(msg, sender_pid)</code> — το pid του μπαίνει στο readers array.</span></li>
+      <li><strong>Ενημέρωση δεικτών</strong><span><code>head = (head + 1) % max_msgs</code>, <code>count++</code>, <code>next_msg_id++</code>.</span></li>
+      <li><strong>d_unlock + new_msg_signal</strong><span>Ξεκλείδωμα + SIGNAL_FULL για ειδοποίηση consumers.</span></li>
+    </ol>
+
+    <pre><span class="kw">int</span> <span class="fn">send_msg</span>(Dialog* dialog, <span class="type">int</span> semid, 
+             <span class="kw">const char</span>* cont, <span class="type">int</span> sender_pid, 
+             <span class="type">int</span> terminated) {
+    <span class="fn">wait_for_space</span>(semid);
+    <span class="fn">d_lock</span>(semid);
+    
+    <span class="type">MSG</span>* msg = &amp;dialog-&gt;msg_queue.msgs[dialog-&gt;msg_queue.head];
+    <span class="fn">strncpy</span>(msg-&gt;cont, cont, max_msg_length - <span class="num">1</span>);
+    msg-&gt;sender_pid = sender_pid;
+    msg-&gt;terminated = terminated;
+    msg-&gt;participants = dialog-&gt;participants_c;
+    
+    <span class="fn">read_msg</span>(msg, sender_pid);  <span class="cm">// ο αποστολέας "διαβάζει" πρώτος</span>
+    
+    dialog-&gt;msg_queue.head = (dialog-&gt;msg_queue.head + <span class="num">1</span>) % max_msgs;
+    dialog-&gt;msg_queue.count++;
+    
+    <span class="fn">d_unlock</span>(semid);
+    <span class="fn">new_msg_signal</span>(semid);
+    <span class="kw">return</span> <span class="num">1</span>;
+}</pre>
+  </div>
+
+  <div class="section">
+    <h2>3️⃣ Λήψη Μηνύματος</h2>
+    <p>Συνάρτηση: <code>receive_msg()</code> στο <code>msg_queue.c</code></p>
+
+    <ol class="step-list">
+      <li><strong>d_lock(semid)</strong><span>Κλείδωμα του dialog για αποκλειστική πρόσβαση.</span></li>
+      <li><strong>Διάσχιση ουράς</strong><span>Από <code>tail</code> προς <code>head</code> — έλεγχος για μηνύματα που δεν έχουν διαβαστεί από το receiver_pid.</span></li>
+      <li><strong>Έλεγχος αν έχει διαβαστεί</strong><span>Loop στον <code>readers[]</code> — αν βρεθεί το pid, το μήνυμα έχει ήδη διαβαστεί.</span></li>
+      <li><strong>Αντιγραφή</strong><span><code>memcpy(output, msg, sizeof(MSG))</code> — πλήρες αντίγραφο του μηνύματος.</span></li>
+      <li><strong>Σήμανση ως διαβασμένο</strong><span><code>read_msg(msg, receiver_pid)</code> — προσθήκη pid στο readers array.</span></li>
+      <li><strong>Έλεγχος "read by all"</strong><span>Αν <code>msg_read_by_all()</code> επιστρέψει 1 → advance tail, <code>count--</code>, <code>signal_new_space</code>.</span></li>
+      <li><strong>break</strong><span>Σταματάει μετά το πρώτο unread μήνυμα.</span></li>
+    </ol>
+
+    <div class="alert info">
+      <strong>One-by-one:</strong> Η <code>receive_msg()</code> επιστρέφει ένα 
+      μήνυμα κάθε φορά. Η <code>handle_receive_command()</code> την καλεί σε 
+      loop μέχρι να μην υπάρχουν άλλα unread.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>4️⃣ Τερματισμός Διαλόγου</h2>
+    <p>Δύο τρόποι:</p>
+
+    <h3>Α. Αποστολή TERMINATE</h3>
+    <ol class="step-list">
+      <li><strong>send_msg με terminated=1</strong><span>Αποστέλλεται κανονικά ως μήνυμα με το flag.</span></li>
+      <li><strong>Λήψη από όλους</strong><span>Κάθε συμμετέχων το διαβάζει και ελέγχει το flag.</span></li>
+      <li><strong>sleep(2)</strong><span>Μικρή καθυστέρηση για να προλάβουν όλοι να το δουν.</span></li>
+      <li><strong>leave_dialog()</strong><span>Αποχώρηση από τον διάλογο.</span></li>
+      <li><strong>clean_all()</strong><span>Αποσύνδεση από shared memory.</span></li>
+    </ol>
+
+    <h3>Β. Επιλογή [E] από μενού</h3>
+    <ol class="step-list">
+      <li><strong>leave_dialog()</strong><span>Lock dialog, <code>remove_participant(pid)</code>.</span></li>
+      <li><strong>Έλεγχος πλήθους</strong><span>Αν <code>participants_c == 0</code> → remove_dialog από λίστα.</span></li>
+      <li><strong>destroy_d_sem + destroy_dialog</strong><span>Διαγραφή semaphores και shared memory.</span></li>
+      <li><strong>detach + clean_all</strong><span>Αποσύνδεση από όλα τα segments.</span></li>
+    </ol>
+
+    <div class="alert success">
+      <strong>Graceful Termination:</strong> Ο διάλογος <strong>δεν</strong> 
+      διαγράφεται μέχρι να διαβαστεί το TERMINATE από όλους τους 
+      συμμετέχοντες. Αυτό εξασφαλίζει ότι κανείς δεν χάνει μηνύματα.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📊 Λίστα Ενεργών Διαλόγων</h2>
+    <p>Συνάρτηση: <code>list_active_dialogs()</code></p>
+
+    <pre><span class="kw">void</span> <span class="fn">list_active_dialogs</span>(Dialog_list* d_list) {
+    <span class="fn">semop</span>(d_list-&gt;sem_id, &amp;lock_op, <span class="num">1</span>);  <span class="cm">// lock λίστας</span>
+    
+    <span class="kw">for</span> (<span class="type">int</span> i = <span class="num">0</span>; i &lt; d_list-&gt;active_c; i++) {
+        Dialog* dialog = <span class="fn">attach_dialog</span>(d_list-&gt;dialog_ids[i], <span class="num">0</span>);
+        <span class="kw">if</span> (dialog) {
+            <span class="fn">printf</span>(<span class="str">"ID: %d | Συμμετέχοντες: %d\n"</span>, 
+                   dialog-&gt;dialog_id, dialog-&gt;participants_c);
+            <span class="fn">detach_dialog</span>();
+        }
+    }
+    
+    <span class="fn">semop</span>(d_list-&gt;sem_id, &amp;unlock_op, <span class="num">1</span>);  <span class="cm">// unlock λίστας</span>
+}</pre>
+  </div>
+
+  <div class="section">
+    <h2>🎮 Interactive Menu</h2>
+    <div class="result-box">---- Μενού ----
+[S] Αποστολή μηνύματος (Send)
+[R] Λήψη μηνυμάτων (Receive)
+[I] Πληροφορίες διαλόγου (Info)
+[L] Κατάσταση συστήματος (List)
+[U] Χρήστες (Users)
+[E] Έξοδος (Exit)
+Επιλογή: </div>
+  </div>
+</section>
+
+<!-- ==================== MEMORY ==================== -->
+<section class="page" id="memory">
+  <div class="comp-header shm">
+    <div class="icon">🧠</div>
+    <div>
+      <h1>Μνήμη & IPC</h1>
+      <p>Shared memory management — <code>shared_memory.c</code></p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>💾 Δύο Shared Memory Segments</h2>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Dialog_list Segment</h3>
+        <p>Ένα <strong>global</strong> segment που περιέχει τη λίστα όλων 
+        των ενεργών διαλόγων. Δημιουργείται από την πρώτη διεργασία.</p>
+      </div>
+      <div class="card">
+        <h3>Dialog Segment (per dialogue)</h3>
+        <p>Ένα <strong>ξεχωριστό</strong> segment για κάθε διάλογο, που 
+        περιέχει participants, message queue, sem_id.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🔑 Unique Key Generation</h2>
+    <pre><span class="type">key_t</span> <span class="fn">generate_key</span>(<span class="type">int</span> base_value, <span class="type">int</span> id) {
+    <span class="kw">return</span> IPC_PRIVATE + base_value + id;
+}</pre>
+
+    <table>
+      <thead><tr><th>Base Value</th><th>Χρήση</th><th>Παράδειγμα Key</th></tr></thead>
+      <tbody>
+        <tr><td><code>key_list (1234)</code></td><td>Shared memory για τη λίστα διαλόγων</td><td>IPC_PRIVATE + 1234 + 0</td></tr>
+        <tr><td><code>key_sem (5678)</code></td><td>Semaphores (λίστας & διαλόγων)</td><td>IPC_PRIVATE + 5678 + dialog_id</td></tr>
+        <tr><td><code>key_dialog (9000)</code></td><td>Shared memory για κάθε διάλογο</td><td>IPC_PRIVATE + 9000 + dialog_id</td></tr>
+      </tbody>
+    </table>
+
+    <div class="alert info">
+      <strong>Γιατί IPC_PRIVATE:</strong> Δίνει τη βάση για μοναδικότητα 
+      του key σε συνδυασμό με το base_value και το dialog_id. Δύο 
+      διαφορετικοί διάλογοι παράγουν διαφορετικά keys.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📎 Attach & Detach</h2>
+
+    <h3>attach_d_list(creator)</h3>
+    <ol class="step-list">
+      <li><strong>generate_key</strong><span>key = IPC_PRIVATE + key_list + 0.</span></li>
+      <li><strong>shmget</strong><span>Πρόσβαση στο segment. Αν <code>creator=1</code>, δημιουργία με <code>IPC_CREAT | IPC_EXCL</code>.</span></li>
+      <li><strong>shmat</strong><span>Σύνδεση του segment στο address space της διεργασίας.</span></li>
+      <li><strong>Αρχικοποίηση (αν creator)</strong><span><code>active_c = 0</code>, δημιουργία semaphore για τη λίστα.</span></li>
+      <li><strong>Return pointer</strong><span>Επιστροφή δείκτη στη <code>Dialog_list</code>.</span></li>
+    </ol>
+
+    <h3>detach_d_list()</h3>
+    <pre><span class="kw">if</span> (glb_d_list &amp;&amp; glb_d_list != (<span class="kw">void</span>*)-<span class="num">1</span>) {
+    <span class="fn">shmdt</span>(glb_d_list);   <span class="cm">// αποσύνδεση από το segment</span>
+    glb_d_list = <span class="kw">NULL</span>;
+}</pre>
+  </div>
+
+  <div class="section">
+    <h2>🗑️ Destroy & Cleanup</h2>
+
+    <h3>destroy_d_list()</h3>
+    <ol class="step-list">
+      <li><strong>detach_d_list()</strong><span>Πρώτα αποσύνδεση.</span></li>
+      <li><strong>shmctl(sh_mem_id_list, IPC_RMID)</strong><span>Διαγραφή του shared memory segment.</span></li>
+      <li><strong>semctl(semid, 0, IPC_RMID)</strong><span>Διαγραφή του semaphore της λίστας.</span></li>
+    </ol>
+
+    <h3>destroy_dialog(dialog_id)</h3>
+    <ol class="step-list">
+      <li><strong>Έλεγχος is_dialog</strong><span>Μόνο ο τελευταίος συμμετέχων μπορεί να διαγράψει.</span></li>
+      <li><strong>semctl(sem_id, 0, IPC_RMID)</strong><span>Διαγραφή των 3 semaphores του διαλόγου.</span></li>
+      <li><strong>detach_dialog()</strong><span>Αποσύνδεση από το segment.</span></li>
+      <li><strong>shmctl(shmid, IPC_RMID)</strong><span>Διαγραφή του shared memory segment του διαλόγου.</span></li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2>🧹 clean_all() — Γενικός Καθαρισμός</h2>
+    <pre><span class="kw">void</span> <span class="fn">clean_all</span>() {
+    <span class="fn">detach_dialog</span>();    <span class="cm">// αποσύνδεση από τον διάλογο</span>
+    <span class="fn">detach_d_list</span>();   <span class="cm">// αποσύνδεση από τη λίστα</span>
+}</pre>
+
+    <p>Καλείται σε:</p>
+    <ul style="color:var(--text-muted); margin-left:1.5rem;">
+      <li>Έξοδο από το πρόγραμμα</li>
+      <li>Λήψη σήματος SIGINT/SIGTERM</li>
+      <li>Λήψη TERMINATE μηνύματος</li>
+      <li>Αποστολή TERMINATE μηνύματος</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>📡 Signals & Cleanup</h2>
+    <pre><span class="kw">void</span> <span class="fn">sign_handler</span>(<span class="type">int</span> signum) {
+    <span class="fn">printf</span>(<span class="str">"\nΛήψη σήματος %d. Τερματισμός...\n"</span>, signum);
+    
+    <span class="kw">if</span> (curr_dialog_id != -<span class="num">1</span>) {
+        Dialog_list* d_list = <span class="fn">attach_d_list</span>(<span class="num">0</span>);
+        <span class="kw">if</span> (d_list) {
+            <span class="fn">leave_dialog</span>(d_list, curr_dialog_id, curr_pid);
+            <span class="fn">detach_d_list</span>();
+        }
+    }
+    
+    <span class="fn">clean_all</span>();
+    <span class="fn">exit</span>(<span class="num">0</span>);
+}
+
+<span class="cm">// Εγκατάσταση handlers στο main()</span>
+<span class="fn">signal</span>(SIGINT,  sign_handler);   <span class="cm">// Ctrl+C</span>
+<span class="fn">signal</span>(SIGTERM, sign_handler);  <span class="cm">// kill</span></pre>
+
+    <div class="alert success">
+      <strong>Safe exit:</strong> Όταν ο χρήστης πατήσει Ctrl+C, η διεργασία 
+      αποχωρεί από τον διάλογο και αποσυνδέεται από όλα τα segments — 
+      δεν αφήνει ορφανά IPC resources.
+    </div>
+  </div>
+</section>
+
+<!-- ==================== DESIGN ==================== -->
+<section class="page" id="design">
+  <div class="comp-header design">
+    <div class="icon">🎨</div>
+    <div>
+      <h1>Design Choices</h1>
+      <p>Σχεδιαστικές αποφάσεις και αιτιολόγηση</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>1️⃣ Readers per Message</h2>
+    <p>
+      Κάθε <code>MSG</code> περιέχει πίνακα <code>readers[]</code> και μετρητή 
+      <code>readers_c</code>. Όταν μια διεργασία διαβάσει το μήνυμα, το pid 
+      της προστίθεται στον πίνακα.
+    </p>
+
+    <h3>Γιατί;</h3>
+    <ul style="color:var(--text-muted); margin-left:1.5rem;">
+      <li>Εξασφαλίζει ότι κάθε μήνυμα διαβάζεται <strong>ακριβώς μία φορά</strong> 
+      από κάθε συμμετέχοντα.</li>
+      <li>Επιτρέπει στη <code>msg_read_by_all()</code> να ελέγχει αν το μήνυμα 
+      μπορεί να αφαιρεθεί από την ουρά.</li>
+      <li>Δεν απαιτείται κεντρικός coordinator — κάθε MSG "ξέρει" ποιοι το 
+      διάβασαν.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>2️⃣ Circular Message Queue</h2>
+    <p>
+      Αντί για shifting στοιχείων, χρησιμοποιούνται δείκτες 
+      <code>head</code>/<code>tail</code> με modular arithmetic.
+    </p>
+
+    <h3>Πλεονεκτήματα</h3>
+    <ul style="color:var(--text-muted); margin-left:1.5rem;">
+      <li><strong>O(1)</strong> push/pop αντί για O(n) shifting.</li>
+      <li>Σταθερή χρήση μνήμης — τα 50 slots ανακυκλώνονται.</li>
+      <li>Εύκολος έλεγχος πληρότητας: <code>count == max_msgs</code>.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>3️⃣ Graceful TERMINATE</h2>
+    <p>
+      Ο τελευταίος συμμετέχων που διαβάζει το TERMINATE είναι υπεύθυνος για 
+      τον καθαρισμό των πόρων.
+    </p>
+
+    <div class="alert success">
+      <strong>Εγγύηση:</strong> Ο διάλογος <strong>δεν</strong> διαγράφεται 
+      μέχρι <strong>όλοι</strong> οι συμμετέχοντες να διαβάσουν όλα τα 
+      μηνύματα, συμπεριλαμβανομένου του TERMINATE.
+    </div>
+
+    <h3>Ροή</h3>
+    <div class="flow-steps">
+      <span class="flow-step">Send TERMINATE</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Όλοι διαβάζουν</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">remove_participant</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">participants_c == 0</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">destroy_dialog</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>4️⃣ SEM_UNDO σε όλα τα Semaphores</h2>
+    <p>
+      Όλες οι semaphore λειτουργίες χρησιμοποιούν <code>SEM_UNDO</code>.
+    </p>
+
+    <h3>Γιατί;</h3>
+    <p style="color:var(--text-muted);">
+      Αν μια διεργασία τερματιστεί ενώ κρατάει LOCK, ο kernel αυτόματα 
+      επαναφέρει τη τιμή. Χωρίς αυτό, το σύστημα θα οδηγούνταν σε 
+      <strong>deadlock</strong> — κανείς δεν θα μπορούσε να ξεκλειδώσει 
+      το dialog.
+    </p>
+  </div>
+
+  <div class="section">
+    <h2>5️⃣ Attach με is_X Flags</h2>
+    <p>
+      Κάθε segment έχει flags <code>is_list</code> / <code>is_dialog</code> 
+      που δείχνουν αν η <strong>τρέχουσα</strong> διεργασία το δημιούργησε.
+    </p>
+
+    <h3>Χρήση</h3>
+    <ul style="color:var(--text-muted); margin-left:1.5rem;">
+      <li>Το <code>destroy_*()</code> ελέγχει το flag πριν διαγράψει.</li>
+      <li>Αποφεύγεται <strong>διπλή</strong> διαγραφή από πολλαπλές 
+      διεργασίες.</li>
+      <li>Μόνο η "ιδιοκτήτρια" διεργασία μπορεί να κάνει cleanup.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>6️⃣ Signal Handlers για Cleanup</h2>
+    <p>
+      Οι handlers <code>SIGINT</code> και <code>SIGTERM</code> καλούν 
+      <code>leave_dialog()</code> και <code>clean_all()</code>.
+    </p>
+
+    <h3>Πλεονέκτημα</h3>
+    <p style="color:var(--text-muted);">
+      Ακόμα και αν ο χρήστης πατήσει Ctrl+C, η διεργασία:
+    </p>
+    <ol class="step-list">
+      <li><strong>Αποχωρεί από τον διάλογο</strong><span>Αφαιρεί το pid από τη λίστα συμμετεχόντων.</span></li>
+      <li><strong>Ελέγχει αν ήταν ο τελευταίος</strong><span>Αν ναι, διαγράφει τον διάλογο.</span></li>
+      <li><strong>Αποσυνδέεται από shared memory</strong><span>Δεν αφήνει segments attached.</span></li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2>📊 Trade-offs</h2>
+
+    <table>
+      <thead>
+        <tr><th>Απόφαση</th><th>Πλεονέκτημα</th><th>Μειονέκτημα</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Fixed-size arrays</td>
+          <td>Απλός, predictable κώδικας</td>
+          <td>Σταθερά limits (50 msgs, 50 participants)</td>
+        </tr>
+        <tr>
+          <td>Per-dialogue semaphores</td>
+          <td>Απομονωμένος συγχρονισμός</td>
+          <td>Πολλά IPC resources σε πολλούς διαλόγους</td>
+        </tr>
+        <tr>
+          <td>Copy-based messages</td>
+          <td>Isolation — δεν μοιράζονται pointers</td>
+          <td>Κόστος αντιγραφής για μεγάλα μηνύματα</td>
+        </tr>
+        <tr>
+          <td>Busy loop για terminate</td>
+          <td>Απλός κώδικας, εγγυημένη παράδοση</td>
+          <td>2-second delay πριν τον τερματισμό</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>🏁 Σύνοψη</h2>
+    <p>
+      Το σύστημα χρησιμοποιεί <strong>κλασικές τεχνικές IPC</strong> των 
+      System V — shared memory και semaphores — για να υλοποιήσει ένα 
+      dialogue-based messaging system.
+    </p>
+    <p style="color:var(--text-muted); margin-top:1rem;">
+      Οι σχεδιαστικές αποφάσεις (per-dialogue semaphores, SEM_UNDO, 
+      graceful terminate) δίνουν <strong>αξιοπιστία</strong> και 
+      <strong>αποφυγή deadlocks</strong>, ενώ τα fixed-size arrays 
+      κρατούν τον κώδικα απλό και κατανοητό.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  Εργασία · Λειτουργικά Συστήματα · ΕΚΠΑ<br>
+  <span style="opacity:0.6;">© 2025 — Παπαθανασίου Ελένη</span>
+</footer>
+
+<script>
+function go(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+  
+  const target = document.getElementById(page);
+  if (target) target.classList.add('active');
+  
+  const link = document.querySelector(`.nav-links a[data-page="${page}"]`);
+  if (link) link.classList.add('active');
+  
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  history.replaceState(null, '', '#' + page);
+}
+
+window.addEventListener('load', () => {
+  const hash = window.location.hash.slice(1) || 'home';
+  go(hash);
+});
+
+window.addEventListener('hashchange', () => {
+  const hash = window.location.hash.slice(1) || 'home';
+  go(hash);
+});
+</script>
+</body>
+</html>
