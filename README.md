@@ -15,6 +15,10 @@ queue, dialogue control, and synchronization. Files are organised into two
 folders: header files (`.h`) in `include/` and implementation files (`.c`) in
 `src/`. A `Makefile` and this `README` are also provided.
 
+🌐 **[View the interactive presentation](https://sdi2200135.github.io/SysV-IPC-Dialogue-System/)**
+
+[![Website](https://img.shields.io/badge/Website-Live-brightgreen)](https://sdi2200135.github.io/SysV-IPC-Dialogue-System/)
+
 ---
 
 ## 2. File Structure
